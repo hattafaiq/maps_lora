@@ -5,11 +5,11 @@
 #include <ESP8266HTTPClient.h>
 #include <Wire.h>
  
-const char *ssid = "dann";  
-const char *password = "danu12345";
+const char *ssid = "Redmi";  
+const char *password = "faiqhatta";
  
 //Web/Server address to read/write from 
-const char *host = "http://192.168.43.60:8000/api/v1/data";   //your IP/web server address
+const char *host = "http://monitoringmaps.herokuapp.com/api/v1/data";   //your IP/web server address
 
 
 String id_user;
@@ -274,4 +274,3 @@ boolean runEvery(unsigned long interval)
   }
   return false;
 }
-

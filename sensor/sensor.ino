@@ -40,13 +40,13 @@ TinyGPSPlus gps;
 SoftwareSerial gpsSerial(RXPin, TXPin);
 
 int id_user = 1;
-int id_car= 2;
+int id_car= 1;
 int btn_empty=0;
 int btn_filled= 0;
 int btn_loading= 0;
 int btn_trash= 0;
-double latitude= -7.381100;
-double longitude= 109.92456;
+double latitude;
+double longitude;
 int xgyro;
 int ygyro;
 int speeds= 40;

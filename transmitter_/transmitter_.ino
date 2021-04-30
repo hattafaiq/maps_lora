@@ -15,7 +15,11 @@ const int csPin = 10;          // LoRa radio chip select
 const int resetPin = 9;        // LoRa radio reset
 const int irqPin = 2;          // change for your board; must be a hardware interrupt pin
 
+// mems
+#include <MPU9250_asukiaaa.h>
+MPU9250_asukiaaa mySensor;
 
+//mems
 
 //gps
 
@@ -23,6 +27,8 @@ const int irqPin = 2;          // change for your board; must be a hardware inte
 #include <SoftwareSerial.h>
 
 //-------gps<
+bool starting = false;
+bool gps_mode = false;
 int RXPin = 0;
 int TXPin = 1;
 int GPSBaud = 9600;
@@ -30,32 +36,43 @@ int GPSBaud = 9600;
 String la="";
 String lo="";
 String sped="";
-
         
 TinyGPSPlus gps;
 SoftwareSerial gpsSerial(RXPin, TXPin);
 
 int id_user = 1;
-int id_car= 2;
+int id_car= 1;
 int btn_empty=0;
 int btn_filled= 0;
 int btn_loading= 0;
 int btn_trash= 0;
-double latitude= -7.381100;
-double longitude= 109.92456;
-int xgyro= 12;
-int ygyro= 12;
+double latitude;
+double longitude;
+int xgyro;
+int ygyro;
 int speeds= 40;
 int temp= 0;
-int cycle= 1;
+int cycle= 0;
 
-
+int P1=7;//2
+int P2=4;//1
+int P3=5;//4
+int P4=6;//3
+int lock = 0;
+int val_button = 0;
+//////////////
 void setup() {
-//  Serial.begin(9600);                   // initialize serial
+//  Serial.begin(9600);  
+ pinMode(P1,INPUT_PULLUP);
+  pinMode(P2,INPUT_PULLUP);
+  pinMode(P3,INPUT_PULLUP);
+  pinMode(P4,INPUT_PULLUP);
+  
+  // initialize serial
    Serial.begin(115200);
     gpsSerial.begin(GPSBaud); //gps
   while (!Serial);
-
+  mySensor.beginGyro();
   LoRa.setPins(csPin, resetPin, irqPin);
 
   if (!LoRa.begin(frequency)) {
@@ -78,10 +95,112 @@ void setup() {
   LoRa.onReceive(onReceive);
   LoRa.onTxDone(onTxDone);
   LoRa_rxMode();
+ 
+}
+void loop() {
+ 
+  int buttonA = digitalRead(P1);
+  int buttonB = digitalRead(P2);
+  int buttonC = digitalRead(P3);
+  int buttonD = digitalRead(P4);
+  if (buttonB == LOW && buttonC == LOW && starting  == false)
+  {
+      starting  = true;
+      delay(2000);
+  }
+ 
+  
+  if(starting  == true){
+    
+     main_loop();
+  }
+ else{
+    display.clearDisplay();
+    display.setTextSize(2);             // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);        // Draw white text
+    display.setCursor(0,0);             // Start at top-left corne
+    display.println(F("Starting.."));
+    display.setTextSize(1);  
+    display.setCursor(0,20);             // Start at top-left corne
+    display.println(F("push initial btn 2&3"));
+    display.display();
+  }
 }
 
-void loop() {
+void main_loop(){
+  int buttonA = digitalRead(P1);
+  int buttonB = digitalRead(P2);
+  int buttonC = digitalRead(P3);
+  int buttonD = digitalRead(P4);
 
+  if (buttonA == LOW && buttonD == LOW){
+    cycle =0;
+    starting = 0;
+    lock = 0;
+    
+    val_button = 0;
+    btn_empty = 0;
+    btn_filled= 0;
+    btn_loading = 0;
+    btn_trash = 0;
+        
+  }
+//
+//  else if (buttonA == LOW && buttonC == LOW){
+//    Serial.println("geser");
+//  }
+  else{
+    if (buttonA == LOW){
+        if( lock ==0){
+           cycle =cycle+1;
+           lock =1;
+        }
+        
+      val_button = 1;
+      
+      btn_empty = 1;
+      btn_filled= 0;
+      btn_loading = 1;
+      btn_trash = 0;
+//     Serial.println("satu");
+    }
+  // 
+    if (buttonB == LOW){
+      val_button = 2;
+      btn_empty = 0;
+      btn_filled= 1;
+      btn_loading = 0;
+      btn_trash = 0;
+//      Serial.println("button dua");
+    }
+    
+//    
+    if (buttonC == LOW){
+       val_button = 3;
+        btn_empty = 0;
+        btn_filled= 0;
+        btn_loading = 1;
+        btn_trash = 0;
+//       Serial.println("button tiga");
+    }
+//  
+//    
+    if (buttonD == LOW) {
+        lock = 0;
+        val_button = 4;
+        btn_empty = 0;
+        btn_filled= 0;
+        btn_loading = 0;
+        btn_trash = 1;
+//        
+//       
+//        Serial.println("button empat");
+//        Serial.print("jumlah siklus : ");
+//        Serial.print(cycle);
+    }
+    
+  }
+  //////////////////////////////////////////////////
   String message;
   message = String(id_user)
       + "," + String(id_car) 
@@ -97,6 +216,12 @@ void loop() {
       + "," +String(temp)
       + "," +String(cycle);    
 
+//data mems
+if (mySensor.gyroUpdate() == 0) {
+    xgyro = abs(mySensor.gyroX());
+    ygyro = abs(mySensor.gyroY());
+    //  Serial.println("gyroZ: " + String(gZ));
+  } 
 //  =====================data gps
   while (gpsSerial.available() > 0){
     if (gps.encode(gpsSerial.read())){
@@ -106,25 +231,39 @@ void loop() {
         lo = String(gps.location.lng(),6);
         sped = String(gps.speed.kmph(),3);
         Serial.println(message);
+
+        gps_mode = true;
       }
     }
   }     
 
 //  =====================send message
- if (runEvery(600)) { // repeat every 1000 millis
+ if (runEvery(600) && gps_mode == true) { // repeat every 1000 millis
 //    message += millis();
 
     LoRa_sendMessage(message); // send a message
     
     display.clearDisplay();
-    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setTextSize(2);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
-    display.setCursor(0,0);             // Start at top-left corne
-    display.println(message);
+    display.setCursor(25,0);             // Start at top-left corne
+    display.println(String(val_button));
+
+    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setCursor(13,22);             // Start at top-left corne
+    display.println(F("BUTTON"));
+    
+    
+    display.setTextSize(2);             // Normal 1:1 pixel scale
+    display.setCursor(82,0);             // Start at top-left corne
+    display.println(String(cycle));
+
+    display.setTextSize(1);             // Normal 1:1 pixel scale
+    display.setCursor(75,22);             // Start at top-left corne
+    display.println(F("CYCLE"));
+    
     display.display();
-//  delay(100);
-//    Serial.print(message);
-//    Serial.println(" -->Send Message!");
+    
 //    
   }
 }
