@@ -5,11 +5,11 @@
 #include <ESP8266HTTPClient.h>
 #include <Wire.h>
  
-const char *ssid = "Redmi";  
-const char *password = "faiqhatta";
+const char *ssid = "RML-MLK";  
+const char *password = "riung007";
  
 //Web/Server address to read/write from 
-const char *host = "http://monitoringmaps.herokuapp.com/api/v1/data";   //your IP/web server address
+const char *host = "http://riung-melak.com/api/v1/data";   //your IP/web server address
 
 
 String id_user;
@@ -25,6 +25,15 @@ String ygyro;
 String speeds;
 String temp;
 String cycle;
+
+int xgyro_sum;
+int ygyro_sum;
+int speed_sum;
+
+int xgyro_rerata;
+int ygyro_rerata;
+int speed_rerata;
+int count_rerata =0;
 //=========================
 int counting = 0;
 int lock = 0;
@@ -42,7 +51,8 @@ String data_decode ="";
 String content = "";
 String content_check = "";
 
-
+String latitude_prev = "";
+String longitude_prev = "";
 void setup() {
   
   s.begin(9600);
@@ -103,10 +113,73 @@ void loop() {
         
         parsing(data_decode);
         Serial.print("lt= ");
-        if(runEvery(10000))
-          send();
-          
         Serial.println(latitude);
+
+        count_rerata++;
+        xgyro_sum+= xgyro.toInt();
+        ygyro_sum+= ygyro.toInt();
+        speed_sum+= speeds.toInt();
+
+//        Serial.print(longitude);
+//        Serial.print("-");
+//        Serial.println(longitude_prev);
+//        
+//        Serial.print(latitude);
+//        Serial.print("-");
+//         Serial.print(latitude.toFloat());
+//        Serial.print("-");
+//        Serial.print(latitude_prev.toFloat()+0.02);
+//        Serial.print("-");
+//        Serial.println(latitude_prev);
+        if(latitude_prev != NULL){
+          if(latitude.toFloat() > latitude_prev.toFloat()+0.02 || latitude.toFloat() < latitude_prev.toFloat()-0.02){
+            Serial.println("replay la");
+            latitude = latitude_prev;
+          }
+          else{
+            latitude_prev = latitude;
+          }
+        }
+        else{
+          latitude_prev = latitude;
+        }
+        if(longitude_prev !=NULL){
+          if(longitude.toFloat() > longitude_prev.toFloat()+0.02 || longitude.toFloat() < longitude_prev.toFloat()-0.02){
+            longitude = longitude_prev;
+            Serial.println("replay long");
+          }
+          else{
+            longitude_prev = longitude;
+          }
+        }
+        else{
+           longitude_prev = longitude;
+        }
+
+
+        if(runEvery(10000)){
+           
+          // get rerata
+          // for(int iteration=1; iteration <= count_rerata ; iteration++ ){
+          //   int sum_xgyro += xgyro_sum[iteration];
+          //   int sum_ygyro += ygyro_sum[iteration];
+          // }
+          xgyro_rerata = xgyro_sum/count_rerata;
+          ygyro_rerata = ygyro_sum/count_rerata;
+          speed_rerata =  speed_sum/count_rerata;
+
+          send();
+          xgyro_rerata = 0;
+          ygyro_rerata = 0;
+          speed_rerata =0;
+          xgyro_sum =0;
+          ygyro_sum =0;
+          speed_sum = 0;
+          count_rerata = 0;
+
+        }
+          
+        
         clears();
         counting = 0;
         
@@ -240,9 +313,9 @@ void send(){
         + "&btn_trash=" +String(btn_trash)
         + "&latitude=" +String(latitude)
         + "&longitude=" +String(longitude)
-        + "&xgyro=" +String(xgyro)
-        + "&ygyro=" +String(ygyro)
-        + "&speed=" +String(speeds)
+        + "&xgyro=" +String(xgyro_rerata)
+        + "&ygyro=" +String(ygyro_rerata)
+        + "&speed=" +String(speed_rerata)
         + "&temp=" +String(temp)
         + "&cycle=" +String(cycle);    
       int httpResponseCode = http.POST(postData);
