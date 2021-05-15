@@ -84,9 +84,9 @@ void setup() {
     for(;;); // Don't proceed, loop forever
     }
      LoRa.setSpreadingFactor(12);           // ranges from 6-12,default 7 see API docs
-  // LoRa.setTxPower(20);
-   LoRa.setSignalBandwidth(200E3);
-   LoRa.setCodingRate4(5);
+   LoRa.setTxPower(20); //aktif
+   LoRa.setSignalBandwidth(200E3); // 200E3 diganti menjadi 125E3
+   LoRa.setCodingRate4(5); //dari 5 diganti menjadi 4
   Serial.println("LoRa init succeeded.");
   Serial.println();
   Serial.println("LoRa SIAP");
